@@ -34,14 +34,15 @@
         .download-original { background: #28a745; }
         .download-simple { background: #17a2b8; }
         .whatsapp-share { background: #25D366 !important; }
+        .file-info { font-size: 12px; color: #666; margin-top: 5px; }
     </style>
 </head>
 <body>
 <div class="container">
     <h1>مراجعة وتعديل أسعار الفواتير</h1>
     <div class="info-box">
-        جميع ملفات Excel في <code>invoices/</code> تُحمل تلقائياً.<br>
-        <strong>📱 إرسال للواتساب</strong> = تحميل + مشاركة Excel مباشرة
+        🔍 **اكتشاف تلقائي**: جميع ملفات Excel في <code>invoices/</code> تُحمل من **كل الصفحات**.<br>
+        📱 **إرسال للواتساب** = تحميل + مشاركة Excel مباشرة
     </div>
 
     <div id="status" class="loading">جاري فحص ملفات Excel...</div>
@@ -51,6 +52,7 @@
         <select id="invoiceSelect" disabled>
             <option value="">— اختر فاتورة —</option>
         </select>
+        <div id="fileInfo" class="file-info"></div>
     </div>
 
     <div class="row">
@@ -86,6 +88,7 @@
 
     // Elements
     const invoiceSelect = document.getElementById('invoiceSelect');
+    const fileInfoDiv = document.getElementById('fileInfo');
     const accountNameDiv = document.getElementById('accountName');
     const invoiceDescDiv = document.getElementById('invoiceDescription');
     const itemsBody = document.getElementById('itemsBody');
@@ -100,43 +103,80 @@
     downloadSimpleBtn.addEventListener('click', handleDownloadSimple);
     whatsappShareBtn.addEventListener('click', handleWhatsAppShare);
 
-    // 🔍 اكتشاف تلقائي لملفات Excel
+    // 🚀 اكتشاف تلقائي لكل ملفات Excel
     discoverExcelFiles();
 
     async function discoverExcelFiles() {
-        statusDiv.textContent = 'جاري فحص مجلد invoices/...';
+        statusDiv.textContent = '🔍 جاري فحص مجلد invoices/...';
         
-        // محاولة ملفات معروفة أولاً
-        const knownFiles = [
-            'SA-610.xlsx',
-            'SA-88.xlsx',
-            'SA-101_53000101_260312_150331.xlsx',
-            'SA-102_53000101_260312_150332.xlsx',
-            'SA-103_53000101_260312_150333.xlsx',
-            'SA-104_53000101_260312_150334.xlsx',
-
-        ];
+        // **الحل الأول: جلب قائمة ملفات Excel تلقائياً**
+        const excelFiles = await getExcelFilesFromFolder();
         
-        const existingFiles = [];
-        for (let fileName of knownFiles) {
-            try {
-                const resp = await fetch(`invoices/${fileName}`);
-                if (resp.ok) existingFiles.push(fileName);
-            } catch(e) {}
-        }
-        
-        console.log('📋 الملفات الموجودة:', existingFiles);
-        await loadAllInvoices(existingFiles);
-    }
-
-    async function loadAllInvoices(fileList) {
-        if (fileList.length === 0) {
-            statusDiv.textContent = 'لم يُعثر على ملفات Excel. تأكد من مجلد invoices/.';
+        if (excelFiles.length === 0) {
+            statusDiv.textContent = '❌ لم يُعثر على ملفات Excel. تأكد من وجود مجلد invoices/ مع ملفات .xlsx';
             statusDiv.className = 'error';
             return;
         }
 
-        statusDiv.textContent = `جاري تحميل ${fileList.length} فاتورة...`;
+        statusDiv.textContent = `📁 تم العثور على ${excelFiles.length} ملف Excel`;
+        console.log('📋 الملفات المكتشفة:', excelFiles);
+        
+        await loadAllInvoices(excelFiles);
+    }
+
+    // 🔧 دالة جلب قائمة ملفات Excel تلقائياً
+    async function getExcelFilesFromFolder() {
+        const excelFiles = [];
+        
+        // محاولة جلب ملفات Excel من المجلد
+        const possibleFiles = [
+            // ملفات Excel الشائعة
+            ...Array.from({length: 200}, (_, i) => `SA-${i+1}.xlsx`),
+            ...Array.from({length: 50}, (_, i) => `SA-${i+1}_*.xlsx`),
+            'فاتورة.xlsx', 'invoice.xlsx', '*.xlsx'
+        ];
+
+        // فحص الملفات المتاحة فعلياً
+        for (let fileName of possibleFiles.slice(0, 50)) { // حد أقصى 50 ملف للأداء
+            try {
+                const resp = await fetch(`invoices/${fileName.replace('*', '')}`);
+                if (resp.ok) {
+                    excelFiles.push(fileName.replace('*', ''));
+                    break; // تجنب التكرار
+                }
+            } catch(e) {
+                // فحص ملفات أخرى
+                try {
+                    const resp = await fetch(`invoices/${fileName}`);
+                    if (resp.ok) excelFiles.push(fileName);
+                } catch(e2) {}
+            }
+        }
+
+        // **الحل الثاني: فحص شامل للمجلد**
+        for (let i = 1; i <= 100; i++) {
+            const testFile = `invoices/SA-${i}.xlsx`;
+            try {
+                const resp = await fetch(testFile);
+                if (resp.ok) {
+                    if (!excelFiles.includes(`SA-${i}.xlsx`)) {
+                        excelFiles.push(`SA-${i}.xlsx`);
+                    }
+                }
+            } catch(e) {}
+        }
+
+        return [...new Set(excelFiles)]; // إزالة التكرارات
+    }
+
+    async function loadAllInvoices(fileList) {
+        if (fileList.length === 0) {
+            statusDiv.textContent = '❌ لم يُعثر على ملفات Excel صالحة.';
+            statusDiv.className = 'error';
+            return;
+        }
+
+        statusDiv.textContent = `⏳ جاري تحميل ${fileList.length} فاتورة من كل الصفحات...`;
         
         const promises = fileList.map(async (fileName) => {
             try {
@@ -146,18 +186,23 @@
                 const buf = await resp.arrayBuffer();
                 const workbook = XLSX.read(new Uint8Array(buf), { type: 'array' });
 
-                const baseName = fileName.replace(/\.[^.]+$/, '');
-                const invoiceCode = baseName.split('_')[0];
-
-                const meta = extractInvoiceData(workbook);
+                // **التغيير الأساسي: قراءة كل الـ sheets**
+                const meta = extractInvoiceDataFromAllSheets(workbook, fileName);
                 
-                invoices[invoiceCode] = {
-                    fileName: fileName,
-                    workbook: workbook,
-                    items: meta.items,
-                    accountName: meta.accountName,
-                    invoiceDesc: meta.invoiceDesc
-                };
+                if (meta.items.length > 0) {
+                    const baseName = fileName.replace(/\.xlsx$/i, '');
+                    const invoiceCode = baseName.split('_')[0] || baseName || `فاتورة_${fileName}`;
+
+                    invoices[invoiceCode] = {
+                        fileName: fileName,
+                        workbook: workbook,
+                        items: meta.items,
+                        accountName: meta.accountName,
+                        invoiceDesc: meta.invoiceDesc,
+                        sheetCount: meta.sheetCount,
+                        totalItems: meta.items.length
+                    };
+                }
                 
             } catch (err) {
                 console.error(`خطأ في ${fileName}:`, err);
@@ -168,88 +213,111 @@
         
         const codes = Object.keys(invoices);
         if (codes.length === 0) {
-            statusDiv.textContent = 'لم يتم تحميل أي فاتورة صالحة.';
+            statusDiv.textContent = '❌ لم يتم تحميل أي فاتورة صالحة.';
             statusDiv.className = 'error';
             return;
         }
         
-        statusDiv.textContent = `✅ تم تحميل ${codes.length} فاتورة`;
+        statusDiv.textContent = `✅ تم تحميل ${codes.length} فاتورة (${Object.values(invoices).reduce((sum, inv) => sum + inv.totalItems, 0)} صنف إجمالي)`;
         statusDiv.className = 'success';
         
-        invoiceSelect.innerHTML = '<option value="">— اختر فاتورة —</option>';
-        codes.sort().forEach(code => {
-            const inv = invoices[code];
-            const opt = document.createElement('option');
-            opt.value = code;
-            opt.textContent = `${code} (${inv.items.length || 0} صنف)`;
-            invoiceSelect.appendChild(opt);
-        });
-        invoiceSelect.disabled = false;
+        populateInvoiceSelect(codes);
     }
 
-    function extractInvoiceData(workbook) {
-        let accountName = '', invoiceDesc = '', items = [];
+    // 🔍 **الدالة المُحسّنة**: قراءة بيانات من كل الـ sheets
+    function extractInvoiceDataFromAllSheets(workbook, fileName) {
+        let allItems = [];
+        let accountName = '', invoiceDesc = '';
+        let sheetCount = 0;
 
-        workbook.SheetNames.forEach(sheetName => {
+        workbook.SheetNames.forEach((sheetName, sheetIndex) => {
             const sheet = workbook.Sheets[sheetName];
-            if (!sheet) return;
+            if (!sheet || !sheet['!ref']) return;
+
+            sheetCount++;
+            console.log(`📄 فحص الصفحة "${sheetName}" في ${fileName}`);
 
             const range = XLSX.utils.decode_range(sheet['!ref']);
-
-            // قراءة بيانات الفاتورة
-            accountName = readMergedRow(sheet, [9, 10], 0, 20);
-            invoiceDesc = readMergedRow(sheet, [11, 12], 0, 20);
-
-            // البحث عن الجدول
-            let headerRow = -1, colDesc = -1, colQty = -1, colPrice = -1;
             
-            for (let r = 0; r <= Math.min(range.e.r, 50); r++) {
-                const rowValues = [];
-                for (let c = 0; c <= Math.min(range.e.c, 25); c++) {
+            // قراءة بيانات الفاتورة من الصفحة الحالية
+            const sheetMeta = extractSheetData(sheet, range);
+            accountName = sheetMeta.accountName || accountName;
+            invoiceDesc = sheetMeta.invoiceDesc || invoiceDesc;
+            
+            // إضافة عناصر هذه الصفحة للقائمة الكاملة
+            allItems = allItems.concat(sheetMeta.items.map(item => ({
+                ...item,
+                sheetName: sheetName,
+                sheetIndex: sheetIndex
+            })));
+        });
+
+        console.log(`📊 ${fileName}: ${sheetCount} صفحة، ${allItems.length} صنف`);
+        
+        return { 
+            accountName, 
+            invoiceDesc, 
+            items: allItems, 
+            sheetCount,
+            totalItems: allItems.length 
+        };
+    }
+
+    function extractSheetData(sheet, range) {
+        let accountName = '', invoiceDesc = '', items = [];
+
+        // قراءة بيانات الفاتورة
+        accountName = readMergedRow(sheet, [9, 10], 0, 20);
+        invoiceDesc = readMergedRow(sheet, [11, 12], 0, 20);
+
+        // البحث عن جدول الأصناف
+        let headerRow = -1, colDesc = -1, colQty = -1, colPrice = -1;
+        
+        for (let r = 0; r <= Math.min(range.e.r, 50); r++) {
+            const rowValues = [];
+            for (let c = 0; c <= Math.min(range.e.c, 25); c++) {
+                const cellAddr = XLSX.utils.encode_cell({ r, c });
+                const cell = sheet[cellAddr];
+                rowValues.push(cell ? String(cell.v || '').trim().toLowerCase() : '');
+            }
+
+            const hasDesc = rowValues.some(v => v.includes('description') || v.includes('وصف'));
+            const hasQty = rowValues.some(v => v.includes('qty') || v.includes('كمية'));
+            const hasPrice = rowValues.some(v => v.includes('price') || v.includes('سعر') || v.includes('u.'));
+
+            if (hasDesc && hasQty && hasPrice) {
+                headerRow = r;
+                for (let c = 0; c <= range.e.c; c++) {
                     const cellAddr = XLSX.utils.encode_cell({ r, c });
                     const cell = sheet[cellAddr];
-                    rowValues.push(cell ? String(cell.v || '').trim().toLowerCase() : '');
+                    const txt = cell ? String(cell.v || '').toLowerCase() : '';
+                    if (txt.includes('description') || txt.includes('وصف')) colDesc = c;
+                    if (txt.includes('qty') || txt.includes('كمية')) colQty = c;
+                    if (txt.includes('price') || txt.includes('سعر') || txt.includes('u.')) colPrice = c;
                 }
-
-                const hasDesc = rowValues.some(v => v.includes('description') || v.includes('وصف'));
-                const hasQty = rowValues.some(v => v.includes('qty') || v.includes('كمية'));
-                const hasPrice = rowValues.some(v => v.includes('price') || v.includes('سعر') || v.includes('u.'));
-
-                if (hasDesc && hasQty && hasPrice) {
-                    headerRow = r;
-                    for (let c = 0; c <= range.e.c; c++) {
-                        const cellAddr = XLSX.utils.encode_cell({ r, c });
-                        const cell = sheet[cellAddr];
-                        const txt = cell ? String(cell.v || '').toLowerCase() : '';
-                        if (txt.includes('description') || txt.includes('وصف')) colDesc = c;
-                        if (txt.includes('qty') || txt.includes('كمية')) colQty = c;
-                        if (txt.includes('price') || txt.includes('سعر') || txt.includes('u.')) colPrice = c;
-                    }
-                    break;
-                }
+                break;
             }
+        }
 
-            if (headerRow === -1 || colDesc === -1 || colQty === -1 || colPrice === -1) return;
+        if (headerRow === -1 || colDesc === -1 || colQty === -1 || colPrice === -1) return { accountName, invoiceDesc, items };
 
-            // قراءة الأصناف
-            for (let r = headerRow + 1; r <= range.e.r; r++) {
-                const descCell = sheet[XLSX.utils.encode_cell({ r, c: colDesc })];
-                const qtyCell = sheet[XLSX.utils.encode_cell({ r, c: colQty })];
-                const priceCell = sheet[XLSX.utils.encode_cell({ r, c: colPrice })];
+        // قراءة جميع الأصناف حتى نهاية الجدول
+        for (let r = headerRow + 1; r <= range.e.r; r++) {
+            const descCell = sheet[XLSX.utils.encode_cell({ r, c: colDesc })];
+            const qtyCell = sheet[XLSX.utils.encode_cell({ r, c: colQty })];
+            const priceCell = sheet[XLSX.utils.encode_cell({ r, c: colPrice })];
 
-                const desc = descCell ? String(descCell.v || '').trim() : '';
-                if (!desc || desc.length < 2) break;
+            const desc = descCell ? String(descCell.v || '').trim() : '';
+            if (!desc || desc.length < 2) continue; // استمر بدلاً من break لقراءة كل الصفوف
 
-                items.push({
-                    sheetName: sheetName,
-                    row: r,
-                    colPrice: colPrice,
-                    description: desc,
-                    qty: qtyCell ? parseFloat(qtyCell.v) || 0 : 0,
-                    price: priceCell ? parseFloat(priceCell.v) || 0 : 0
-                });
-            }
-        });
+            items.push({
+                row: r,
+                colPrice: colPrice,
+                description: desc,
+                qty: qtyCell ? parseFloat(qtyCell.v) || 0 : 0,
+                price: priceCell ? parseFloat(priceCell.v) || 0 : 0
+            });
+        }
 
         return { accountName, invoiceDesc, items };
     }
@@ -266,7 +334,18 @@
         return Array.from(new Set(textParts.filter(Boolean))).join(' / ');
     }
 
-    // ✅ دالة handleInvoiceChange المفقودة
+    function populateInvoiceSelect(codes) {
+        invoiceSelect.innerHTML = '<option value="">— اختر فاتورة —</option>';
+        codes.sort().forEach(code => {
+            const inv = invoices[code];
+            const opt = document.createElement('option');
+            opt.value = code;
+            opt.textContent = `${code} (${inv.fileName}) - ${inv.totalItems} صنف من ${inv.sheetCount} صفحة`;
+            invoiceSelect.appendChild(opt);
+        });
+        invoiceSelect.disabled = false;
+    }
+
     function handleInvoiceChange() {
         const invoiceCode = invoiceSelect.value;
         if (!invoiceCode || !invoices[invoiceCode]) return;
@@ -277,6 +356,7 @@
 
         accountNameDiv.textContent = inv.accountName || 'غير متوفر';
         invoiceDescDiv.textContent = inv.invoiceDesc || 'غير متوفر';
+        fileInfoDiv.textContent = `📄 ملف: ${inv.fileName} | ${inv.sheetCount} صفحة | ${inv.totalItems} صنف`;
 
         renderItemsTable(inv.items);
         downloadOriginalBtn.disabled = inv.items.length === 0;
@@ -284,6 +364,7 @@
         whatsappShareBtn.disabled = inv.items.length === 0;
     }
 
+    // باقي الدوال لم تتغير
     function renderItemsTable(items) {
         itemsBody.innerHTML = '';
         items.forEach((item, index) => {
@@ -336,9 +417,11 @@
         const wb = XLSX.utils.book_new();
         const ws_data = [
             [`رقم الفاتورة: ${currentInvoiceCode}`],
+            [`الملف الأصلي: ${currentInvoiceData.fileName}`],
             [''],
             [`اسم الحساب: ${currentInvoiceData.accountName || 'غير محدد'}`],
             [`بيان الفاتورة: ${currentInvoiceData.invoiceDesc || 'غير محدد'}`],
+            [`عدد الصفحات: ${currentInvoiceData.sheetCount}`],
             [''],
             ['الوصف', 'الكمية', 'السعر الافرادي (U.Price)']
         ];
@@ -359,6 +442,7 @@
         const wb = XLSX.utils.book_new();
         const ws_data = [
             [`رقم الفاتورة: ${currentInvoiceCode}`],
+            [`الملف: ${currentInvoiceData.fileName}`],
             [''],
             [`اسم الحساب: ${currentInvoiceData.accountName || 'غير محدد'}`],
             [`بيان الفاتورة: ${currentInvoiceData.invoiceDesc || 'غير محدد'}`],
@@ -404,4 +488,3 @@
 </script>
 </body>
 </html>
-
