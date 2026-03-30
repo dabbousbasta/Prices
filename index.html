@@ -1,49 +1,11 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="UTF-8">
-  <title>تسعير من invoice.xlsx</title>
-
-  <!-- مكتبة قراءة الإكسل -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  <!-- مكتبة تحويل HTML إلى PDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-
-  <style>
-    body { font-family: Tahoma, Arial; padding: 10px; }
-    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: center; }
-    tr.selected { background-color: #ffe6b3; }
-    button { margin: 5px 0; padding: 5px 10px; }
-  </style>
-</head>
-<body>
-
-<h3>صفحة تسعير من ملف invoice.xlsx</h3>
-
-<!-- هنا أنت تحط فوق باليد اسم الحساب / البيان / رقم الفاتورة -->
-<div>
-  <span>الساده معمار - سان جوزيف - SA1 - 106</span>
-</div>
-
-<button id="exportPdfBtn">تحميل جدول الأسعار PDF</button>
-
-<table id="resultTable">
-  <thead>
-    <tr>
-      <th>#</th>
-      <th>الوصف (Description)</th>
-      <th>الكمية (Qty)</th>
-      <th>السعر (U.Price)</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
-
 <script>
 let allRows = [];
 let currentIndex = 0;
+let headerInfo = {
+  account: "",
+  statement: "",
+  refNo: ""
+};
 
 // قراءة ملف الإكسل أوتوماتيك عند فتح الصفحة
 window.addEventListener('load', function() {
@@ -54,12 +16,18 @@ window.addEventListener('load', function() {
     })
     .then(data => {
       const workbook = XLSX.read(data, { type: 'array' });
+
       allRows = [];
+      headerInfo = { account: "", statement: "", refNo: "" };
 
       workbook.SheetNames.forEach(sheetName => {
         const worksheet = workbook.Sheets[sheetName];
         const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
 
+        // قراءة الهيدر (Ref. No / الحساب / البيان)
+        extractHeaderInfo(json);
+
+        // قراءة الأصناف Description / Qty / U.Price
         let headerRowIndex = -1;
         for (let i = 0; i < json.length; i++) {
           const row = json[i].map(x => (x || "").toString().trim());
@@ -94,12 +62,56 @@ window.addEventListener('load', function() {
         }
       });
 
+      updateHeaderDiv();
       renderTable();
     })
     .catch(err => {
       alert('خطأ في قراءة الملف: ' + err.message);
     });
 });
+
+// استخراج رقم الفاتورة / اسم الحساب / البيان من صفوف الشيت
+function extractHeaderInfo(json) {
+  for (let i = 0; i < json.length; i++) {
+    const row = json[i].map(x => (x || "").toString().trim());
+
+    // البحث عن Ref. No.:
+    const refCell = row.find(c => c.includes("Ref. No.:"));
+    if (refCell) {
+      // مثال: "Acc. No. : 413162 ,,, Ref. No.: SA1 - 106 ,,,"
+      const parts = refCell.split("Ref. No.:");
+      if (parts.length > 1) {
+        headerInfo.refNo = parts[1].trim();
+      }
+
+      // الصف اللي بعده: اسم الحساب (أول خلية غير فاضية)
+      if (i + 1 < json.length && !headerInfo.account) {
+        const accRow = json[i + 1].map(x => (x || "").toString().trim());
+        const nonEmpty = accRow.find(c => c !== "");
+        if (nonEmpty) headerInfo.account = nonEmpty;
+      }
+
+      // الصف اللي بعده: البيان (أول خلية غير فاضية)
+      if (i + 2 < json.length && !headerInfo.statement) {
+        const stRow = json[i + 2].map(x => (x || "").toString().trim());
+        const nonEmptySt = stRow.find(c => c !== "");
+        if (nonEmptySt) headerInfo.statement = nonEmptySt;
+      }
+
+      break; // يكفي أول مرة نلاقي فيها Ref. No
+    }
+  }
+}
+
+// تحديث النص المعروض فوق الجدول
+function updateHeaderDiv() {
+  const div = document.getElementById('headerInfo');
+  div.innerHTML = `
+    <div>اسم الحساب: ${headerInfo.account || "-"}</div>
+    <div>البيان: ${headerInfo.statement || "-"}</div>
+    <div>رقم الفاتورة: ${headerInfo.refNo || "-"}</div>
+  `;
+}
 
 // رسم الجدول
 function renderTable() {
@@ -122,7 +134,6 @@ function renderTable() {
       selectRow(parseInt(this.dataset.index, 10));
     });
 
-    // لما تدخل على خلية السعر بالماوس أو اللمس، يتحدد النص كامل
     const priceCell = tr.querySelector('td:last-child');
     priceCell.addEventListener('focus', function() {
       selectRow(i);
@@ -133,11 +144,10 @@ function renderTable() {
   });
 
   currentIndex = 0;
-  // بعد ما نرسم، نختار أول صف وأول سعر
   selectRow(0);
 }
 
-// اختيار صف معيّن
+// اختيار صف
 function selectRow(idx) {
   const rows = document.querySelectorAll('#resultTable tbody tr');
   rows.forEach(r => r.classList.remove('selected'));
@@ -153,7 +163,7 @@ function selectRow(idx) {
   }
 }
 
-// دالة لتحديد النص بالكامل داخل خلية السعر
+// تحديد كامل نص خلية السعر
 function selectCellText(cell) {
   const range = document.createRange();
   range.selectNodeContents(cell);
@@ -162,7 +172,7 @@ function selectCellText(cell) {
   sel.addRange(range);
 }
 
-// Enter للانتقال على الصف التالي مع تحديد السعر بالكامل
+// Enter للانتقال على الصف التالي مع تحديد السعر
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Enter') {
     const rows = document.querySelectorAll('#resultTable tbody tr');
@@ -173,23 +183,31 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
-// زر تصدير PDF
+// زر تصدير PDF (الهيدر + الجدول)
 document.getElementById('exportPdfBtn').addEventListener('click', function() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF('p', 'pt', 'a4');
 
-  const table = document.getElementById('resultTable');
+  const container = document.createElement('div');
+  const headerClone = document.getElementById('headerInfo').cloneNode(true);
+  const tableClone = document.getElementById('resultTable').cloneNode(true);
 
-  html2canvas(table).then(canvas => {
-    const imgData = canvas.toDataURL('image PNG');
-    const imgWidth = 550;
+  container.style.padding = '10px';
+  container.appendChild(headerClone);
+  container.appendChild(document.createElement('br'));
+  container.appendChild(tableClone);
+
+  document.body.appendChild(container);
+
+  html2canvas(container).then(canvas => {
+    const imgData = canvas.toDataURL('image/png');
     const pageWidth = doc.internal.pageSize.getWidth();
-    const x = (pageWidth - imgWidth) / 2;
-    doc.addImage(imgData, 'PNG', x, 40, imgWidth, 0);
+    const imgWidth = pageWidth - 40;
+    const imgHeight = canvas.height * imgWidth / canvas.width;
+
+    doc.addImage(imgData, 'PNG', 20, 20, imgWidth, imgHeight);
+    document.body.removeChild(container);
     doc.save('pricing.pdf');
   });
 });
 </script>
-
-</body>
-</html>
