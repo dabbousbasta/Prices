@@ -69,8 +69,8 @@ window.addEventListener('load', function() {
         const worksheet = workbook.Sheets[sheetName];
         const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
 
-        // قراءة الهيدر (Ref. No / الحساب / البيان)
-        extractHeaderInfo(json);
+        // قراءة رقم الفاتورة + اسم الحساب + البيان
+        extractHeaderInfo(json, worksheet);
 
         // قراءة الأصناف Description / Qty / U.Price
         let headerRowIndex = -1;
@@ -116,12 +116,11 @@ window.addEventListener('load', function() {
     });
 });
 
-// استخراج رقم الفاتورة / اسم الحساب / البيان من صفوف الشيت
-function extractHeaderInfo(json) {
+// استخراج رقم الفاتورة / اسم الحساب / البيان
+function extractHeaderInfo(json, worksheet) {
+  // 1) رقم الفاتورة من صف فيه "Ref. No.:"
   for (let i = 0; i < json.length; i++) {
     const row = json[i].map(x => (x || "").toString().trim());
-
-    // البحث عن خلية فيها Ref. No.:
     const refIndex = row.findIndex(c => c.includes("Ref. No.:"));
     if (refIndex !== -1) {
       const refCell = row[refIndex];
@@ -129,23 +128,38 @@ function extractHeaderInfo(json) {
       if (parts.length > 1) {
         headerInfo.refNo = parts[1].trim();
       }
-
-      // الصف اللي بعده: اسم الحساب (أول خلية غير فاضية)
-      if (i + 1 < json.length && !headerInfo.account) {
-        const accRow = json[i + 1].map(x => (x || "").toString().trim());
-        const nonEmpty = accRow.find(c => c !== "");
-        if (nonEmpty) headerInfo.account = nonEmpty;
-      }
-
-      // الصف اللي بعده: البيان (أول خلية غير فاضية)
-      if (i + 2 < json.length && !headerInfo.statement) {
-        const stRow = json[i + 2].map(x => (x || "").toString().trim());
-        const nonEmptySt = stRow.find(c => c !== "");
-        if (nonEmptySt) headerInfo.statement = nonEmptySt;
-      }
-
       break;
     }
+  }
+
+  // 2) اسم الحساب من النطاق B10:U11 (صفوف 10 و11)
+  const accountLines = [];
+  for (let r = 10; r <= 11; r++) {
+    for (let c = 2; c <= 21; c++) { // B=2 إلى U=21 إذا اعتبرنا A=1
+      const cellAddress = XLSX.utils.encode_cell({ r: r - 1, c: c - 1 }); // الصفوف/الأعمدة 0-based
+      const cell = worksheet[cellAddress];
+      if (cell && cell.v && cell.v.toString().trim() !== "") {
+        accountLines.push(cell.v.toString().trim());
+      }
+    }
+  }
+  if (accountLines.length > 0) {
+    headerInfo.account = accountLines.join(" ");
+  }
+
+  // 3) البيان من النطاق B12:U13 (صفوف 12 و13)
+  const statementLines = [];
+  for (let r = 12; r <= 13; r++) {
+    for (let c = 2; c <= 21; c++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: r - 1, c: c - 1 });
+      const cell = worksheet[cellAddress];
+      if (cell && cell.v && cell.v.toString().trim() !== "") {
+        statementLines.push(cell.v.toString().trim());
+      }
+    }
+  }
+  if (statementLines.length > 0) {
+    headerInfo.statement = statementLines.join(" ");
   }
 }
 
@@ -227,7 +241,7 @@ document.addEventListener('keydown', function(e) {
     const nextIndex = (currentIndex + 1) % rows.length;
     selectRow(nextIndex);
   }
-});
+}
 
 // زر تصدير PDF (الهيدر + الجدول)
 document.getElementById('exportPdfBtn').addEventListener('click', function() {
