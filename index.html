@@ -1,3 +1,44 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>تسعير من invoice.xlsx</title>
+
+  <!-- مكتبة قراءة الإكسل -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- مكتبات تحويل HTML إلى PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+  <style>
+    body { font-family: Tahoma, Arial; padding: 10px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 4px 6px; text-align: center; }
+    tr.selected { background-color: #ffe6b3; }
+    button { margin: 5px 0; padding: 5px 10px; }
+    #headerInfo { margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+<h3>صفحة تسعير من ملف invoice.xlsx</h3>
+
+<div id="headerInfo"></div>
+
+<button id="exportPdfBtn">تحميل الأسعار PDF</button>
+
+<table id="resultTable">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>الوصف (Description)</th>
+      <th>الكمية (Qty)</th>
+      <th>السعر (U.Price)</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
 <script>
 let allRows = [];
 let currentIndex = 0;
@@ -9,9 +50,13 @@ let headerInfo = {
 
 // قراءة ملف الإكسل أوتوماتيك عند فتح الصفحة
 window.addEventListener('load', function() {
-  fetch('invoice.xlsx')
+  const fileUrl = 'invoice.xlsx'; // تأكد أن الاسم والمسار صحيحان
+
+  fetch(fileUrl)
     .then(response => {
-      if (!response.ok) throw new Error('لم يتم العثور على invoice.xlsx');
+      if (!response.ok) {
+        throw new Error('HTTP status ' + response.status + ' - تحقق من مسار الملف: ' + fileUrl);
+      }
       return response.arrayBuffer();
     })
     .then(data => {
@@ -66,6 +111,7 @@ window.addEventListener('load', function() {
       renderTable();
     })
     .catch(err => {
+      console.error('fetch error:', err);
       alert('خطأ في قراءة الملف: ' + err.message);
     });
 });
@@ -75,10 +121,10 @@ function extractHeaderInfo(json) {
   for (let i = 0; i < json.length; i++) {
     const row = json[i].map(x => (x || "").toString().trim());
 
-    // البحث عن Ref. No.:
-    const refCell = row.find(c => c.includes("Ref. No.:"));
-    if (refCell) {
-      // مثال: "Acc. No. : 413162 ,,, Ref. No.: SA1 - 106 ,,,"
+    // البحث عن خلية فيها Ref. No.:
+    const refIndex = row.findIndex(c => c.includes("Ref. No.:"));
+    if (refIndex !== -1) {
+      const refCell = row[refIndex];
       const parts = refCell.split("Ref. No.:");
       if (parts.length > 1) {
         headerInfo.refNo = parts[1].trim();
@@ -98,7 +144,7 @@ function extractHeaderInfo(json) {
         if (nonEmptySt) headerInfo.statement = nonEmptySt;
       }
 
-      break; // يكفي أول مرة نلاقي فيها Ref. No
+      break;
     }
   }
 }
@@ -211,3 +257,6 @@ document.getElementById('exportPdfBtn').addEventListener('click', function() {
   });
 });
 </script>
+
+</body>
+</html>
