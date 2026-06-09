@@ -1,432 +1,317 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <title>مراجعة أسعار الفواتير - دبوس البسطة</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <style>
-        body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: #f5f5f5; margin: 0; padding: 10px; box-sizing: border-box; }
-        .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-        h1 { font-size: 20px; margin-top: 0; text-align: center; }
-        .row { margin-bottom: 10px; }
-        label { display: block; font-size: 14px; margin-bottom: 4px; }
-        select, button, input[type="file"] { width: 100%; font-size: 14px; padding: 6px 8px; box-sizing: border-box; }
-        button { cursor: pointer; background: #007bff; color: #fff; border: none; border-radius: 4px; margin-top: 5px; }
-        button:disabled { background: #999; cursor: not-allowed; }
-        .info-box { background: #f0f4ff; border-radius: 4px; padding: 8px; margin-bottom: 10px; font-size: 13px; line-height: 1.5; }
-        .label-title { font-weight: bold; }
-        .value-box { background: #fafafa; border-radius: 4px; padding: 6px; margin-top: 4px; font-size: 13px; border: 1px solid #ddd; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
-        th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: center; }
-        th { background: #f0f0f0; position: sticky; top: 0; z-index: 1; }
-        tbody tr:nth-child(odd) { background: #fcfcfc; }
-        tbody tr:nth-child(even) { background: #f6f6f6; }
-        .price-input { width: 100%; border: none; background: transparent; text-align: center; font-size: 13px; padding: 2px; box-sizing: border-box; }
-        .price-input:focus { outline: 2px solid #007bff; background: #fff; }
-        .table-container { max-height: 60vh; overflow: auto; border: 1px solid #ddd; border-radius: 4px; margin-top: 10px; }
-        .loading { font-size: 13px; color: #555; }
-        .error { font-size: 13px; color: #b00020; }
-        .success { color: #0a6c00; }
-        .download-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
-        .download-buttons button { flex: 1; min-width: 120px; }
-        .download-original { background: #28a745; }
-        .download-simple { background: #17a2b8; }
-        .whatsapp-share { background: #25D366 !important; }
-        .file-info { font-size: 12px; color: #666; margin-top: 5px; }
-    </style>
+  <meta charset="UTF-8" />
+  <title>مبيعات دبوس البسطة</title>
+  <!-- SheetJS -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <!-- مكتبة تحويل HTML إلى PDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f7f7f7;
+    }
+    fieldset {
+      border: 1px solid #ccc;
+      padding: 15px;
+      margin-bottom: 15px;
+      background: #fff;
+    }
+    select, button, input {
+      padding: 8px 10px;
+      margin: 5px;
+    }
+    input[type="number"] {
+      width: 100px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px 8px;
+      text-align: right;
+    }
+    th {
+      background-color: #007cba;
+      color: white;
+    }
+    .total-row td {
+      font-weight: bold;
+      background-color: #f0f0f0;
+    }
+    .invoice-total {
+      background-color: #e8f4fd;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 5px;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    .invoice-total span {
+      color: #007cba;
+      font-size: 22px;
+    }
+    #btnShare {
+      background-color: #25D366;
+      color: white;
+      border: none;
+      font-weight: bold;
+    }
+    #btnShare:hover {
+      background-color: #128C7E;
+    }
+  </style>
 </head>
 <body>
-<div class="container">
-    <h1>🔥 مراجعة وتعديل أسعار الفواتير</h1>
-    <div class="info-box">
-        ✅ **طريقتين للاختيار**:<br>
-        1️⃣ **رفع ملف Excel مباشرة** (أسرع)<br>
-        2️⃣ **اكتشاف تلقائي** من مجلد invoices/
-    </div>
+  <h1>مبيعات دبوس البسطة</h1>
 
-    <div class="row">
-        <label for="fileInput">📁 رفع ملف Excel:</label>
-        <input type="file" id="fileInput" accept=".xlsx,.xls" />
-    </div>
+  <!-- مجموع الفاتورة الكلية -->
+  <div class="invoice-total">
+    مجموع الفاتورة: <span id="invoiceTotal">0.00</span> $
+  </div>
 
-    <div class="row">
-        <button id="scanFolderBtn" onclick="scanFolder()">🔍 فحص مجلد invoices/</button>
-    </div>
+  <fieldset>
+    <legend>اختر</legend>
+    <label>الملف:</label>
+    <select id="selectFile">
+      <option value="">اختر ملف...</option>
+    </select>
 
-    <div id="status" class="loading">اختر ملف أو اضغط "فحص مجلد"</div>
+    <button id="btnShow">إظهار البيانات</button>
+    <button id="btnShare">مشاركة PDF</button>
+  </fieldset>
 
-    <div class="row">
-        <label for="invoiceSelect">اختيار الفاتورة:</label>
-        <select id="invoiceSelect" disabled>
-            <option value="">— اختر فاتورة —</option>
-        </select>
-        <div id="fileInfo" class="file-info"></div>
-    </div>
+  <div id="tableContainer">
+    <table id="dataTable">
+      <thead>
+        <tr>
+          <th>البيان</th>
+          <th>الكمية</th>
+          <th>السعر $</th>
+          <th>المجموع $</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+      <tfoot id="tableFoot">
+        <tr class="total-row">
+          <td colspan="3">المجموع الكلي</td>
+          <td id="totalAmount">0.00</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
 
-    <div class="row">
-        <span class="label-title">اسم الحساب:</span>
-        <div id="accountName" class="value-box">—</div>
-    </div>
+  <script>
+    // مسار ملف قائمة الملفات
+    const FILES_LIST_URL = "invoices/files.json";
+    
+    // مسار مجلد invoices
+    const INVOICES_FOLDER = "invoices/";
 
-    <div class="row">
-        <span class="label-title">بيان الفاتورة:</span>
-        <div id="invoiceDescription" class="value-box">—</div>
-    </div>
-
-    <div class="row download-buttons">
-        <button id="downloadOriginalBtn" disabled class="download-original">الأصلي المحدث</button>
-        <button id="downloadSimpleBtn" disabled class="download-simple">النسخة المبسطة</button>
-        <button id="whatsappShareBtn" disabled class="whatsapp-share">📱 إرسال للواتساب</button>
-    </div>
-
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr><th>الوصف</th><th>الكمية</th><th>السعر (U.Price)</th></tr>
-            </thead>
-            <tbody id="itemsBody"></tbody>
-        </table>
-    </div>
-</div>
-
-<script>
-    const invoices = {};
-    let currentInvoiceCode = null;
-    let currentInvoiceData = null;
-
-    // Elements
-    const fileInput = document.getElementById('fileInput');
-    const invoiceSelect = document.getElementById('invoiceSelect');
-    const fileInfoDiv = document.getElementById('fileInfo');
-    const accountNameDiv = document.getElementById('accountName');
-    const invoiceDescDiv = document.getElementById('invoiceDescription');
-    const itemsBody = document.getElementById('itemsBody');
-    const downloadOriginalBtn = document.getElementById('downloadOriginalBtn');
-    const downloadSimpleBtn = document.getElementById('downloadSimpleBtn');
-    const whatsappShareBtn = document.getElementById('whatsappShareBtn');
-    const statusDiv = document.getElementById('status');
-
-    // Event Listeners
-    fileInput.addEventListener('change', handleFileUpload);
-    invoiceSelect.addEventListener('change', handleInvoiceChange);
-    downloadOriginalBtn.addEventListener('click', handleDownloadOriginal);
-    downloadSimpleBtn.addEventListener('click', handleDownloadSimple);
-    whatsappShareBtn.addEventListener('click', handleWhatsAppShare);
-
-    // ✅ طريقة 1: رفع ملف مباشرة (الأسرع)
-    async function handleFileUpload(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        statusDiv.textContent = '⏳ جاري تحميل الملف...';
-        statusDiv.className = 'loading';
-
-        try {
-            const arrayBuffer = await file.arrayBuffer();
-            const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
-            
-            const fileName = file.name.replace(/\.(xlsx|xls)$/i, '');
-            const meta = extractInvoiceDataFromAllSheets(workbook, file.name);
-            
-            if (meta.items.length > 0) {
-                invoices[fileName] = {
-                    fileName: file.name,
-                    workbook: workbook,
-                    items: meta.items,
-                    accountName: meta.accountName,
-                    invoiceDesc: meta.invoiceDesc,
-                    sheetCount: meta.sheetCount,
-                    totalItems: meta.items.length,
-                    originalFile: file
-                };
-
-                populateInvoiceSelect([fileName]);
-                statusDiv.textContent = `✅ تم تحميل ${file.name}`;
-                statusDiv.className = 'success';
-            } else {
-                statusDiv.textContent = '❌ الملف لا يحتوي على بيانات فواتير صالحة';
-                statusDiv.className = 'error';
-            }
-        } catch (err) {
-            statusDiv.textContent = '❌ خطأ في تحميل الملف';
-            statusDiv.className = 'error';
-            console.error(err);
-        }
+    // --- تحميل قائمة الملفات من files.json ---
+    async function loadFileList() {
+      try {
+        const response = await fetch(FILES_LIST_URL);
+        const fileList = await response.json();
+        return fileList;
+      } catch (e) {
+        alert("خطأ في قراءة ملف invoices/files.json:\n" + e.message);
+        console.error(e);
+        return [];
+      }
     }
 
-    // ✅ طريقة 2: فحص مجلد بسرعة (10 ملفات فقط)
-    window.scanFolder = async function() {
-        statusDiv.textContent = '🔍 فحص سريع لمجلد invoices/...';
-        statusDiv.className = 'loading';
-
-        const commonFiles = [
-            'SA-90.xlsx', 'SA-2.xlsx', 'SA-3.xlsx', 'SA-4.xlsx', 'SA-5.xlsx',
-            'SA-10.xlsx', 'SA-88.xlsx', 'SA-101.xlsx', 'SA-102.xlsx', 'SA-610.xlsx',
-            'فاتورة.xlsx', 'invoice.xlsx'
-        ];
-
-        const foundFiles = [];
-        for (let fileName of commonFiles) {
-            if (await fileExists(`invoices/${fileName}`)) {
-                foundFiles.push(fileName);
-            }
-        }
-
-        if (foundFiles.length === 0) {
-            statusDiv.textContent = '❌ لم يُعثر على ملفات في invoices/. جرب رفع ملف مباشرة';
-            statusDiv.className = 'error';
-            return;
-        }
-
-        await loadAllInvoices(foundFiles);
-    };
-
-    // اختبار وجود ملف بسرعة
-    async function fileExists(filePath) {
-        try {
-            const response = await fetch(filePath, { method: 'HEAD', cache: 'no-cache' });
-            return response.ok;
-        } catch {
-            return false;
-        }
+    // --- تحميل ملف Excel من مجلد invoices ---
+    async function loadWorkbook(fileName) {
+      let workbook;
+      try {
+        const response = await fetch(INVOICES_FOLDER + fileName);
+        const data = await response.arrayBuffer();
+        workbook = XLSX.read(data, { type: "array" });
+        return workbook;
+      } catch (e) {
+        alert("خطأ في قراءة الملف " + fileName + ":\n" + e.message);
+        console.error(e);
+        return null;
+      }
     }
 
-    // قراءة كل الصفحات من ملف
-    function extractInvoiceDataFromAllSheets(workbook, fileName) {
-        let allItems = [];
-        let accountName = '', invoiceDesc = '';
-        let sheetCount = 0;
+    // --- جلب البيانات من ملف Excel ---
+    function getInvoiceData(workbook) {
+      const sheetName = workbook.SheetNames[0]; // الورقة الأولى
+      const ws = workbook.Sheets[sheetName];
+      const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", blankrows: false });
 
-        workbook.SheetNames.forEach((sheetName) => {
-            const sheet = workbook.Sheets[sheetName];
-            if (!sheet || !sheet['!ref']) return;
-
-            sheetCount++;
-            const range = XLSX.utils.decode_range(sheet['!ref']);
-            const sheetMeta = extractSheetData(sheet, range);
-            
-            accountName = sheetMeta.accountName || accountName;
-            invoiceDesc = sheetMeta.invoiceDesc || invoiceDesc;
-            allItems = allItems.concat(sheetMeta.items.map(item => ({
-                ...item,
-                sheetName: sheetName
-            })));
-        });
-
-        return { accountName, invoiceDesc, items: allItems, sheetCount };
-    }
-
-    function extractSheetData(sheet, range) {
-        let accountName = '', invoiceDesc = '', items = [];
-
-        accountName = readMergedRow(sheet, [9, 10], 0, 20);
-        invoiceDesc = readMergedRow(sheet, [11, 12], 0, 20);
-
-        let headerRow = -1, colDesc = -1, colQty = -1, colPrice = -1;
+      const rows = [];
+      
+      // نبدأ من الصف الثاني (index 1) لأن الصف الأول عناوين
+      for (let i = 1; i < data.length; i++) {
+        const row = data[i];
         
-        for (let r = 0; r <= Math.min(range.e.r, 50); r++) {
-            const rowValues = [];
-            for (let c = 0; c <= Math.min(range.e.c, 25); c++) {
-                const cellAddr = XLSX.utils.encode_cell({ r, c });
-                const cell = sheet[cellAddr];
-                rowValues.push(cell ? String(cell.v || '').trim().toLowerCase() : '');
-            }
+        const itemname = row[4];   // Column E = index 4
+        const qty = row[6];        // Column G = index 6
+        const note = row[32];      // Column AE = index 32
+        const cost = row[33];      // Column AH = index 33
 
-            const hasDesc = rowValues.some(v => v.includes('description') || v.includes('وصف'));
-            const hasQty = rowValues.some(v => v.includes('qty') || v.includes('كمية'));
-            const hasPrice = rowValues.some(v => v.includes('price') || v.includes('سعر') || v.includes('u.'));
+        // تجاهل إذا كان هناك بيانات فارغة
+        if (!itemname || !qty || !cost) continue;
 
-            if (hasDesc && hasQty && hasPrice) {
-                headerRow = r;
-                for (let c = 0; c <= range.e.c; c++) {
-                    const cellAddr = XLSX.utils.encode_cell({ r, c });
-                    const cell = sheet[cellAddr];
-                    const txt = cell ? String(cell.v || '').toLowerCase() : '';
-                    if (txt.includes('description') || txt.includes('وصف')) colDesc = c;
-                    if (txt.includes('qty') || txt.includes('كمية')) colQty = c;
-                    if (txt.includes('price') || txt.includes('سعر') || txt.includes('u.')) colPrice = c;
-                }
-                break;
-            }
+        // جمع Item_Name + Note
+        let desc = String(itemname).trim();
+        if (note && String(note).trim() !== "") {
+          desc += " " + String(note).trim();
         }
 
-        if (headerRow === -1 || colDesc === -1 || colQty === -1 || colPrice === -1) {
-            return { accountName, invoiceDesc, items };
-        }
-
-        for (let r = headerRow + 1; r <= range.e.r; r++) {
-            const descCell = sheet[XLSX.utils.encode_cell({ r, c: colDesc })];
-            const desc = descCell ? String(descCell.v || '').trim() : '';
-            if (!desc || desc.length < 2) continue;
-
-            const qtyCell = sheet[XLSX.utils.encode_cell({ r, c: colQty })];
-            const priceCell = sheet[XLSX.utils.encode_cell({ r, c: colPrice })];
-
-            items.push({
-                row: r,
-                colPrice: colPrice,
-                description: desc,
-                qty: qtyCell ? parseFloat(qtyCell.v) || 0 : 0,
-                price: priceCell ? parseFloat(priceCell.v) || 0 : 0
-            });
-        }
-
-        return { accountName, invoiceDesc, items };
-    }
-
-    function readMergedRow(sheet, rowsArray, colStart, colEnd) {
-        let textParts = [];
-        rowsArray.forEach(r => {
-            for (let c = colStart; c <= colEnd; c++) {
-                const cellAddr = XLSX.utils.encode_cell({ r, c });
-                const cell = sheet[cellAddr];
-                if (cell && cell.v) textParts.push(String(cell.v).trim());
-            }
+        rows.push({
+          desc: desc,
+          qty: parseFloat(qty) || 0,
+          cost: parseFloat(cost) || 0
         });
-        return Array.from(new Set(textParts.filter(Boolean))).join(' / ');
+      }
+
+      return rows;
     }
 
-    async function loadAllInvoices(fileList) {
-        statusDiv.textContent = `⏳ تحميل ${fileList.length} ملف...`;
+    // --- حساب المجموع لصف واحد ---
+    function calculateRowTotal(qty, cost) {
+      return qty * cost;
+    }
+
+    // --- ملء الجدول في HTML ---
+    function renderTable(rows) {
+      const tbody = document.getElementById("tableBody");
+      const totalTd = document.getElementById("totalAmount");
+      const invoiceTotal = document.getElementById("invoiceTotal");
+
+      tbody.innerHTML = "";
+
+      if (rows.length === 0) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = '<td colspan="4">لا توجد بيانات في الملف.</td>';
+        tbody.appendChild(tr);
+        totalTd.textContent = "0.00";
+        invoiceTotal.textContent = "0.00";
+        return;
+      }
+
+      let total = 0;
+      rows.forEach((row, index) => {
+        const rowTotal = calculateRowTotal(row.qty, row.cost);
+        total += rowTotal;
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row.desc}</td>
+          <td>${row.qty}</td>
+          <td><input type="number" id="price-${index}" value="${row.cost.toFixed(2)}" step="0.01" min="0" oninput="updateRowTotal(${index}, ${row.qty})" /></td>
+          <td id="row-total-${index}">${rowTotal.toFixed(2)}</td>
+        `;
+        tbody.appendChild(tr);
+
+        // إضافة ممثل Enter للانتقال للسعر التالي
+        const priceInput = tr.querySelector(`#price-${index}`);
+        priceInput.addEventListener("keydown", function(e) {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            const nextIndex = index + 1;
+            const nextInput = document.getElementById(`price-${nextIndex}`);
+            if (nextInput) {
+              nextInput.focus();
+            }
+          }
+        });
+      });
+
+      totalTd.textContent = total.toFixed(2);
+      invoiceTotal.textContent = total.toFixed(2);
+    }
+
+    // --- تحديث مجمّع الصف بعد تعديل السعر ---
+    function updateRowTotal(index, qty) {
+      const priceInput = document.getElementById(`price-${index}`);
+      const newCost = parseFloat(priceInput.value) || 0;
+      const rowTotal = calculateRowTotal(qty, newCost);
+
+      document.getElementById(`row-total-${index}`).textContent = rowTotal.toFixed(2);
+
+      // تحديث المجموع الكلي
+      updateInvoiceTotal();
+    }
+
+    // --- تحديث المجموع الكلي للفاتورة ---
+    function updateInvoiceTotal() {
+      let total = 0;
+      const rowTotals = document.querySelectorAll("#tableBody tr");
+      
+      rowTotals.forEach((tr, index) => {
+        const rowTotalCell = document.getElementById(`row-total-${index}`);
+        if (rowTotalCell) {
+          total += parseFloat(rowTotalCell.textContent) || 0;
+        }
+      });
+
+      document.getElementById("totalAmount").textContent = total.toFixed(2);
+      document.getElementById("invoiceTotal").textContent = total.toFixed(2);
+    }
+
+    // --- زر مشاركة PDF ---
+    function shareAsPDF() {
+      const element = document.body;
+      const opt = {
+        margin: 10,
+        filename: 'مبيعات-دبوس-البسطة.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jshtml: false
+      };
+
+      html2pdf().set(opt).from(element).save().then(() => {
+        alert("تم حفظ الملف كـ PDF! يمكنك الآن مشاركته من الواتساب أو أي تطبيق.");
+      });
+    }
+
+    // --- الأحداث عند تحميل الصفحة ---
+    async function refreshPage() {
+      // --- 1. ملء قائمة الملفات ---
+      const fileList = await loadFileList();
+      const selectFile = document.getElementById("selectFile");
+      
+      selectFile.innerHTML = '<option value="">اختر ملف...</option>';
+      fileList.forEach(fileName => {
+        const opt = document.createElement("option");
+        opt.value = fileName;
+        opttextContent = fileName; // اسم الملف كما هو مكتوب
+        selectFile.appendChild(opt);
+      });
+
+      // --- 2. عند الضغط على زر الإظهار ---
+      document.getElementById("btnShow").onclick = () => {
+        const selectedFile = selectFile.value;
         
-        for (let fileName of fileList) {
-            try {
-                const response = await fetch(`invoices/${fileName}`);
-                if (!response.ok) continue;
-                
-                const arrayBuffer = await response.arrayBuffer();
-                const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
-                
-                const meta = extractInvoiceDataFromAllSheets(workbook, fileName);
-                if (meta.items.length > 0) {
-                    const invoiceCode = fileName.replace(/\.(xlsx|xls)$/i, '');
-                    invoices[invoiceCode] = {
-                        fileName: fileName,
-                        workbook: workbook,
-                        items: meta.items,
-                        accountName: meta.accountName,
-                        invoiceDesc: meta.invoiceDesc,
-                        sheetCount: meta.sheetCount,
-                        totalItems: meta.items.length
-                    };
-                }
-            } catch (err) {
-                console.error(`خطأ في ${fileName}:`, err);
-            }
+        if (!selectedFile) {
+          alert("الرجاء اختيار ملف!");
+          return;
         }
-        
-        const codes = Object.keys(invoices);
-        if (codes.length > 0) {
-            populateInvoiceSelect(codes);
-            statusDiv.textContent = `✅ ${codes.length} فاتورة جاهزة`;
-            statusDiv.className = 'success';
-        } else {
-            statusDiv.textContent = '❌ لا توجد فواتير صالحة';
-            statusDiv.className = 'error';
-        }
-    }
 
-    function populateInvoiceSelect(codes) {
-        invoiceSelect.innerHTML = '<option value="">— اختر فاتورة —</option>';
-        codes.forEach(code => {
-            const inv = invoices[code];
-            const opt = document.createElement('option');
-            opt.value = code;
-            opt.textContent = `${code} (${inv.fileName}) | ${inv.totalItems} صنف`;
-            invoiceSelect.appendChild(opt);
+        loadWorkbook(selectedFile).then(workbook => {
+          if (!workbook) return;
+
+          const rows = getInvoiceData(workbook);
+          renderTable(rows);
         });
-        invoiceSelect.disabled = false;
+      };
+
+      // --- 3. زر مشاركة PDF ---
+      document.getElementById("btnShare").onclick = shareAsPDF;
     }
 
-    function handleInvoiceChange() {
-        const invoiceCode = invoiceSelect.value;
-        if (!invoiceCode || !invoices[invoiceCode]) return;
-
-        currentInvoiceCode = invoiceCode;
-        currentInvoiceData = invoices[invoiceCode];
-        const inv = currentInvoiceData;
-
-        accountNameDiv.textContent = inv.accountName || 'غير متوفر';
-        invoiceDescDiv.textContent = inv.invoiceDesc || 'غير متوفر';
-        fileInfoDiv.innerHTML = `📄 <strong>${inv.fileName}</strong><br>${inv.sheetCount} صفحة | ${inv.totalItems} صنف`;
-
-        renderItemsTable(inv.items);
-        downloadOriginalBtn.disabled = false;
-        downloadSimpleBtn.disabled = false;
-        whatsappShareBtn.disabled = false;
-    }
-
-    function renderItemsTable(items) {
-        itemsBody.innerHTML = '';
-        items.forEach((item, index) => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${item.description || ''}</td>
-                <td>${item.qty || ''}</td>
-                <td><input type="number" step="0.01" class="price-input" 
-                           value="${item.price || ''}" data-index="${index}"></td>
-            `;
-            itemsBody.appendChild(tr);
-        });
-
-        itemsBody.querySelectorAll('.price-input').forEach((input, idx) => {
-            input.addEventListener('focus', function() { this.select(); });
-            input.addEventListener('input', function() {
-                const idx = parseInt(this.dataset.index);
-                currentInvoiceData.items[idx].price = this.value === '' ? '' : parseFloat(this.value);
-            });
-        });
-    }
-
-    function handleDownloadOriginal() {
-        if (!currentInvoiceData) return;
-        const inv = currentInvoiceData;
-
-        inv.items.forEach(item => {
-            const sheet = inv.workbook.Sheets[item.sheetName];
-            const cellAddr = XLSX.utils.encode_cell({ r: item.row, c: item.colPrice });
-            if (!sheet[cellAddr]) sheet[cellAddr] = { t: 'n', v: 0 };
-            sheet[cellAddr].t = 'n';
-            sheet[cellAddr].v = item.price === '' ? 0 : parseFloat(item.price || 0);
-        });
-
-        const wbout = XLSX.write(inv.workbook, { bookType: 'xlsx', type: 'array' });
-        downloadFile(wbout, inv.fileName.replace(/\.(xlsx|xls)$/i, '_محدث.xlsx'));
-    }
-
-    function handleDownloadSimple() {
-        if (!currentInvoiceData) return;
-        const wb = XLSX.utils.book_new();
-        const ws_data = [
-            [`الملف: ${currentInvoiceData.fileName}`],
-            [`الفاتورة: ${currentInvoiceCode}`],
-            ['الوصف', 'الكمية', 'السعر']
-        ];
-
-        currentInvoiceData.items.forEach(item => {
-            ws_data.push([item.description || '', item.qty || 0, item.price || 0]);
-        });
-
-        const ws = XLSX.utils.aoa_to_sheet(ws_data);
-        XLSX.utils.book_append_sheet(wb, ws, 'فاتورة محدثة');
-        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-        downloadFile(wbout, `${currentInvoiceCode}_مبسط.xlsx`);
-    }
-
-    function handleWhatsAppShare() {
-        handleDownloadSimple(); // نفس النسخة المبسطة للواتساب
-    }
-
-    function downloadFile(wbout, filename) {
-        const blob = new Blob([wbout], { type: "application/octet-stream" });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    }
-</script>
+    // --- تشغيل المنطق عند تحميل الصفحة ---
+    window.addEventListener("load", refreshPage);
+  </script>
 </body>
 </html>
