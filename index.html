@@ -3,74 +3,26 @@
 <head>
   <meta charset="UTF-8" />
   <title>مبيعات دبوس البسطة</title>
-  <!-- SheetJS -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-  <!-- مكتبة تحويل HTML إلى PDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      background-color: #f7f7f7;
-    }
-    fieldset {
-      border: 1px solid #ccc;
-      padding: 15px;
-      margin-bottom: 15px;
-      background: #fff;
-    }
-    select, button, input {
-      padding: 8px 10px;
-      margin: 5px;
-    }
-    input[type="number"] {
-      width: 100px;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin-top: 10px;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 6px 8px;
-      text-align: right;
-    }
-    th {
-      background-color: #007cba;
-      color: white;
-    }
-    .total-row td {
-      font-weight: bold;
-      background-color: #f0f0f0;
-    }
-    .invoice-total {
-      background-color: #e8f4fd;
-      padding: 15px;
-      margin-bottom: 15px;
-      border-radius: 5px;
-      font-weight: bold;
-      font-size: 18px;
-    }
-    .invoice-total span {
-      color: #007cba;
-      font-size: 22px;
-    }
-    #btnShare {
-      background-color: #25D366;
-      color: white;
-      border: none;
-      font-weight: bold;
-    }
-    #btnShare:hover {
-      background-color: #128C7E;
-    }
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f7f7f7; }
+    fieldset { border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; background: #fff; }
+    select, button, input { padding: 8px 10px; margin: 5px; }
+    input[type="number"] { width: 100px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: right; }
+    th { background-color: #007cba; color: white; }
+    .total-row td { font-weight: bold; background-color: #f0f0f0; }
+    .invoice-total { background-color: #e8f4fd; padding: 15px; margin-bottom: 15px; border-radius: 5px; font-weight: bold; font-size: 18px; }
+    .invoice-total span { color: #007cba; font-size: 22px; }
+    #btnShare { background-color: #25D366; color: white; border: none; font-weight: bold; }
+    #btnShare:hover { background-color: #128C7E; }
   </style>
 </head>
 <body>
   <h1>مبيعات دبوس البسطة</h1>
 
-  <!-- مجموع الفاتورة الكلية -->
   <div class="invoice-total">
     مجموع الفاتورة: <span id="invoiceTotal">0.00</span> $
   </div>
@@ -81,7 +33,6 @@
     <select id="selectFile">
       <option value="">اختر ملف...</option>
     </select>
-
     <button id="btnShow">إظهار البيانات</button>
     <button id="btnShare">مشاركة PDF</button>
   </fieldset>
@@ -107,16 +58,10 @@
   </div>
 
   <script>
-    // مسار ملف قائمة الملفات
     const FILES_LIST_URL = "invoices/files.json";
-    
-    // مسار مجلد invoices
     const INVOICES_FOLDER = "invoices/";
-
-    // اسم الملف الحالي (للاستخدام في PDF)
     let currentFileName = "";
 
-    // --- تحميل قائمة الملفات من files.json ---
     async function loadFileList() {
       try {
         const response = await fetch(FILES_LIST_URL);
@@ -129,16 +74,12 @@
       }
     }
 
-    // --- تحميل ملف Excel من مجلد invoices ---
     async function loadWorkbook(fileName) {
-      let workbook;
       try {
-        // تشفير اسم الملف للمعالجة مع المسافات والحروف العربية
         const encodedFileName = encodeURIComponent(fileName);
         const response = await fetch(INVOICES_FOLDER + encodedFileName);
         const data = await response.arrayBuffer();
-        workbook = XLSX.read(data, { type: "array" });
-        return workbook;
+        return XLSX.read(data, { type: "array" });
       } catch (e) {
         alert("خطأ في قراءة الملف " + fileName + ":\n" + e.message);
         console.error(e);
@@ -146,49 +87,70 @@
       }
     }
 
-    // --- جلب البيانات من ملف Excel ---
     function getInvoiceData(workbook) {
-      const sheetName = workbook.SheetNames[0]; // الورقة الأولى
+      const sheetName = workbook.SheetNames[0];
       const ws = workbook.Sheets[sheetName];
-      const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "", blankrows: false });
+      
+      const data = XLSX.utils.sheet_to_json(ws, { 
+        header: 1, 
+        defval: "", 
+        blankrows: false,
+        raw: false
+      });
 
       const rows = [];
       
-      // نبدأ من الصف الثاني (index 1) لأن الصف الأول عناوين
+      console.log("Total rows in Excel:", data.length); // للطباعة في Console
+
       for (let i = 1; i < data.length; i++) {
         const row = data[i];
         
-        const itemname = row[4];   // Column E = index 4
-        const qty = row[6];        // Column G = index 6
-        const note = row[32];      // Column AE = index 32
-        const cost = row[33];      // Column AH = index 33
+        console.log("Row", i, ":", row); // للطباعة
 
-        // تجاهل إذا كان itemname أو qty فارغ (cost يمكن أن يكون 0)
-        if (!itemname || !qty) continue;
-        if (cost == null || cost === "") continue;
+        const itemname = row[4];   // Column E
+        const qty = row[6];        // Column G
+        const note = row[32];      // Column AE
+        const cost = row[33];      // Column AH
 
-        // جمع Item_Name + Note
+        console.log("itemname:", itemname, "qty:", qty, "cost:", cost);
+
+        // تجاهل الصفوف الفارغة تماماً
+        if (!itemname && !qty && !note && !cost) {
+          console.log("Skipping empty row");
+          continue;
+        }
+        
+        // إذا itemname فارغ، تجاهل
+        if (!itemname || String(itemname).trim() === "") {
+          console.log("Skipping row with empty itemname");
+          continue;
+        }
+        
         let desc = String(itemname).trim();
         if (note && String(note).trim() !== "") {
           desc += " " + String(note).trim();
         }
 
+        const costValue = (cost === "" || cost === null || cost === undefined) ? 0 : parseFloat(cost) || 0;
+        const qtyValue = parseFloat(qty) || 0;
+
+        console.log("Adding row:", { desc, qty: qtyValue, cost: costValue });
+
         rows.push({
           desc: desc,
-          qty: parseFloat(qty) || 0,
-          cost: parseFloat(cost) || 0
+          qty: qtyValue,
+          cost: costValue
         });
       }
 
+      console.log("Total rows added:", rows.length);
       return rows;
     }
 
-    // --- حساب المجموع لصف واحد ---
     function calculateRowTotal(qty, cost) {
       return qty * cost;
     }
 
-    // --- ملء الجدول في HTML ---
     function renderTable(rows) {
       const tbody = document.getElementById("tableBody");
       const totalTd = document.getElementById("totalAmount");
@@ -219,7 +181,6 @@
         `;
         tbody.appendChild(tr);
 
-        // إضافة Enter للانتقال للسعر التالي
         const priceInput = tr.querySelector(`#price-${index}`);
         priceInput.addEventListener("keydown", function(e) {
           if (e.key === "Enter") {
@@ -237,41 +198,30 @@
       invoiceTotal.textContent = total.toFixed(2);
     }
 
-    // --- تحديث مجمّع الصف بعد تعديل السعر ---
     function updateRowTotal(index, qty) {
       const priceInput = document.getElementById(`price-${index}`);
       const newCost = parseFloat(priceInput.value) || 0;
       const rowTotal = calculateRowTotal(qty, newCost);
-
       document.getElementById(`row-total-${index}`).textContent = rowTotal.toFixed(2);
-
-      // تحديث المجموع الكلي
       updateInvoiceTotal();
     }
 
-    // --- تحديث المجموع الكلي للفاتورة ---
     function updateInvoiceTotal() {
       let total = 0;
       const rowTotals = document.querySelectorAll("#tableBody tr");
-      
       rowTotals.forEach((tr, index) => {
         const rowTotalCell = document.getElementById(`row-total-${index}`);
         if (rowTotalCell) {
           total += parseFloat(rowTotalCell.textContent) || 0;
         }
       });
-
       document.getElementById("totalAmount").textContent = total.toFixed(2);
       document.getElementById("invoiceTotal").textContent = total.toFixed(2);
     }
 
-    // --- زر مشاركة PDF ---
     function shareAsPDF() {
       const element = document.body;
-      
-      // تحويل اسم الملف من .xlsx إلى .pdf
       const pdfFileName = currentFileName.replace(/\.xlsx$/, '.pdf').replace(/\.xlsm$/, '.pdf');
-      
       const opt = {
         margin: 10,
         filename: pdfFileName,
@@ -279,13 +229,10 @@
         html2canvas: { scale: 2 },
         jshtml: false
       };
-
       html2pdf().set(opt).from(element).save();
     }
 
-    // --- الأحداث عند تحميل الصفحة ---
     async function refreshPage() {
-      // --- 1. ملء قائمة الملفات ---
       const fileList = await loadFileList();
       const selectFile = document.getElementById("selectFile");
       
@@ -293,35 +240,27 @@
       fileList.forEach(fileName => {
         const opt = document.createElement("option");
         opt.value = fileName;
-        opt.textContent = fileName; // اسم الملف كما هو مكتوب
+        opt.textContent = fileName;
         selectFile.appendChild(opt);
       });
 
-      // --- 2. عند الضغط على زر الإظهار ---
       document.getElementById("btnShow").onclick = () => {
         const selectedFile = selectFile.value;
-        
         if (!selectedFile) {
           alert("الرجاء اختيار ملف!");
           return;
         }
-
-        // حفظ اسم الملف الحالي للاستخدام في PDF
         currentFileName = selectedFile;
-
         loadWorkbook(selectedFile).then(workbook => {
           if (!workbook) return;
-
           const rows = getInvoiceData(workbook);
           renderTable(rows);
         });
       };
 
-      // --- 3. زر مشاركة PDF ---
       document.getElementById("btnShare").onclick = shareAsPDF;
     }
 
-    // --- تشغيل المنطق عند تحميل الصفحة ---
     window.addEventListener("load", refreshPage);
   </script>
 </body>
