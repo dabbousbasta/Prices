@@ -130,7 +130,9 @@
     async function loadWorkbook(fileName) {
       let workbook;
       try {
-        const response = await fetch(INVOICES_FOLDER + fileName);
+        // تشفير اسم الملف للمعالجة مع المسافات والحروف العربية
+        const encodedFileName = encodeURIComponent(fileName);
+        const response = await fetch(INVOICES_FOLDER + encodedFileName);
         const data = await response.arrayBuffer();
         workbook = XLSX.read(data, { type: "array" });
         return workbook;
@@ -285,7 +287,7 @@
       fileList.forEach(fileName => {
         const opt = document.createElement("option");
         opt.value = fileName;
-        opttextContent = fileName; // اسم الملف كما هو مكتوب
+        opt.textContent = fileName; // اسم الملف كما هو مكتوب
         selectFile.appendChild(opt);
       });
 
