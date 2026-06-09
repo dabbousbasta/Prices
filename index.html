@@ -163,8 +163,9 @@
         const note = row[32];      // Column AE = index 32
         const cost = row[33];      // Column AH = index 33
 
-        // تجاهل إذا كان هناك بيانات فارغة
-        if (!itemname || !qty || !cost) continue;
+        // تجاهل إذا كان itemname أو qty فارغ (cost يمكن أن يكون 0)
+        if (!itemname || !qty) continue;
+        if (cost == null || cost === "") continue;
 
         // جمع Item_Name + Note
         let desc = String(itemname).trim();
