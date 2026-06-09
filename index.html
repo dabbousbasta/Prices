@@ -113,6 +113,9 @@
     // مسار مجلد invoices
     const INVOICES_FOLDER = "invoices/";
 
+    // اسم الملف الحالي (للاستخدام في PDF)
+    let currentFileName = "";
+
     // --- تحميل قائمة الملفات من files.json ---
     async function loadFileList() {
       try {
@@ -264,17 +267,19 @@
     // --- زر مشاركة PDF ---
     function shareAsPDF() {
       const element = document.body;
+      
+      // تحويل اسم الملف من .xlsx إلى .pdf
+      const pdfFileName = currentFileName.replace(/\.xlsx$/, '.pdf').replace(/\.xlsm$/, '.pdf');
+      
       const opt = {
         margin: 10,
-        filename: 'مبيعات-دبوس-البسطة.pdf',
+        filename: pdfFileName,
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2 },
         jshtml: false
       };
 
-      html2pdf().set(opt).from(element).save().then(() => {
-        alert("تم حفظ الملف كـ PDF! يمكنك الآن مشاركته من الواتساب أو أي تطبيق.");
-      });
+      html2pdf().set(opt).from(element).save();
     }
 
     // --- الأحداث عند تحميل الصفحة ---
@@ -299,6 +304,9 @@
           alert("الرجاء اختيار ملف!");
           return;
         }
+
+        // حفظ اسم الملف الحالي للاستخدام في PDF
+        currentFileName = selectedFile;
 
         loadWorkbook(selectedFile).then(workbook => {
           if (!workbook) return;
