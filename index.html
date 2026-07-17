@@ -79,7 +79,7 @@
         const encodedFileName = encodeURIComponent(fileName);
         const response = await fetch(INVOICES_FOLDER + encodedFileName);
         const data = await response.arrayBuffer();
-        return XLSX.read(data, { type: "array" });
+        return XLSX.read(data, { type: "array", cellFormula: false, cellDates: true });
       } catch (e) {
         alert("خطأ في قراءة الملف " + fileName + ":\n" + e.message);
         console.error(e);
@@ -95,46 +95,39 @@
         header: 1, 
         defval: "", 
         blankrows: false,
-        raw: false
+        raw: false,
+        formatted: true
       });
 
       const rows = [];
-      
-      console.log("Total rows in Excel:", data.length); // للطباعة في Console
 
       for (let i = 1; i < data.length; i++) {
         const row = data[i];
         
-        console.log("Row", i, ":", row); // للطباعة
-
-        const itemname = row[4];   // Column E
-        const qty = row[6];        // Column G
-        const note = row[32];      // Column AE
-        const cost = row[33];      // Column AH
-
-        console.log("itemname:", itemname, "qty:", qty, "cost:", cost);
+        // الأماكن الصحيحة للأعمدة:
+        const itemname = row[4];   // Column E - Item_Name
+        const qty = row[6];        // Column G - QTY
+        const note = row[30];      // Column AE - Note
+        const cost = row[33];      // Column AH - COST
 
         // تجاهل الصفوف الفارغة تماماً
         if (!itemname && !qty && !note && !cost) {
-          console.log("Skipping empty row");
           continue;
         }
         
         // إذا itemname فارغ، تجاهل
         if (!itemname || String(itemname).trim() === "") {
-          console.log("Skipping row with empty itemname");
           continue;
         }
         
+        // دمج Item_Name مع Note
         let desc = String(itemname).trim();
-        if (note && String(note).trim() !== "") {
+        if (note && String(note).trim() !== "" && String(note) !== "undefined" && String(note) !== "null") {
           desc += " " + String(note).trim();
         }
 
         const costValue = (cost === "" || cost === null || cost === undefined) ? 0 : parseFloat(cost) || 0;
         const qtyValue = parseFloat(qty) || 0;
-
-        console.log("Adding row:", { desc, qty: qtyValue, cost: costValue });
 
         rows.push({
           desc: desc,
@@ -143,7 +136,6 @@
         });
       }
 
-      console.log("Total rows added:", rows.length);
       return rows;
     }
 
