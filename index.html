@@ -10,8 +10,12 @@
     fieldset { border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; background: #fff; }
     select, button, input { padding: 8px 10px; margin: 5px; }
     input[type="number"] { width: 100px; }
+
+    /* الجدول من اليسار إلى اليمين */
+    #dataTable { direction: ltr; }
+
     table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-    th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: right; }
+    th, td { border: 1px solid #ccc; padding: 6px 8px; }
     th { background-color: #007cba; color: white; }
     .total-row td { font-weight: bold; background-color: #f0f0f0; }
     .invoice-total { background-color: #e8f4fd; padding: 15px; margin-bottom: 15px; border-radius: 5px; font-weight: bold; font-size: 18px; }
@@ -33,7 +37,6 @@
     <select id="selectFile">
       <option value="">اختر ملف...</option>
     </select>
-    <button id="btnShow">إظهار البيانات</button>
     <button id="btnShare">مشاركة PDF</button>
   </fieldset>
 
@@ -41,16 +44,16 @@
     <table id="dataTable">
       <thead>
         <tr>
-          <th>البيان</th>
-          <th>الكمية</th>
-          <th>السعر $</th>
-          <th>المجموع $</th>
+          <th>Cost ($)</th>
+          <th>Qty</th>
+          <th>Item</th>
+          <th>Total</th>
         </tr>
       </thead>
       <tbody id="tableBody"></tbody>
       <tfoot id="tableFoot">
         <tr class="total-row">
-          <td colspan="3">المجموع الكلي</td>
+          <td colspan="3" style="text-align:right;">Total</td>
           <td id="totalAmount">0.00</td>
         </tr>
       </tfoot>
@@ -104,7 +107,6 @@
       for (let i = 1; i < data.length; i++) {
         const row = data[i];
         
-        // الأماكن الصحيحة للأعمدة:
         const itemname = row[4];   // Column E - Item_Name
         const qty = row[6];        // Column G - QTY
         const note = row[30];      // Column AE - Note
@@ -120,17 +122,18 @@
           continue;
         }
         
-        // دمج Item_Name مع Note
-        let desc = String(itemname).trim();
+        let itemnameStr = String(itemname).trim();
+        let noteStr = "";
         if (note && String(note).trim() !== "" && String(note) !== "undefined" && String(note) !== "null") {
-          desc += " " + String(note).trim();
+          noteStr = String(note).trim();
         }
 
         const costValue = (cost === "" || cost === null || cost === undefined) ? 0 : parseFloat(cost) || 0;
         const qtyValue = parseFloat(qty) || 0;
 
         rows.push({
-          desc: desc,
+          itemname: itemnameStr,
+          note: noteStr,
           qty: qtyValue,
           cost: costValue
         });
@@ -152,7 +155,7 @@
 
       if (rows.length === 0) {
         const tr = document.createElement("tr");
-        tr.innerHTML = '<td colspan="4">لا توجد بيانات في الملف.</td>';
+        tr.innerHTML = '<td colspan="4">No data in file.</td>';
         tbody.appendChild(tr);
         totalTd.textContent = "0.00";
         invoiceTotal.textContent = "0.00";
@@ -164,11 +167,16 @@
         const rowTotal = calculateRowTotal(row.qty, row.cost);
         total += rowTotal;
 
+        // سطران في خانة الـ Item: الأول itemname، الثاني note
+        const itemCell = row.note
+          ? `${row.itemname}<br>${row.note}`
+          : row.itemname;
+
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td>${row.desc}</td>
-          <td>${row.qty}</td>
           <td><input type="number" id="price-${index}" value="${row.cost.toFixed(2)}" step="0.01" min="0" onfocus="this.select()" oninput="updateRowTotal(${index}, ${row.qty})" /></td>
+          <td>${row.qty}</td>
+          <td style="height: 50px; vertical-align: middle; line-height: 1.4;">${itemCell}</td>
           <td id="row-total-${index}">${rowTotal.toFixed(2)}</td>
         `;
         tbody.appendChild(tr);
@@ -236,10 +244,11 @@
         selectFile.appendChild(opt);
       });
 
-      document.getElementById("btnShow").onclick = () => {
+      // عند تغيير الاختيار، حمّل الجدول تلقائياً
+      selectFile.addEventListener("change", () => {
         const selectedFile = selectFile.value;
         if (!selectedFile) {
-          alert("الرجاء اختيار ملف!");
+          // لا تفعل شيئاً إذا لم يتم اختيار ملف
           return;
         }
         currentFileName = selectedFile;
@@ -248,7 +257,7 @@
           const rows = getInvoiceData(workbook);
           renderTable(rows);
         });
-      };
+      });
 
       document.getElementById("btnShare").onclick = shareAsPDF;
     }
