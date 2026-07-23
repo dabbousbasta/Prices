@@ -9,7 +9,6 @@
     body { font-family: Arial, sans-serif; margin: 20px; background-color: #f7f7f7; }
     fieldset { border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; background: #fff; }
     select, button, input { padding: 8px 10px; margin: 5px; }
-    input[type="number"] { width: 100px; }
 
     /* اتجاه الجدول من اليسار إلى اليمين */
     #dataTable { direction: ltr; }
@@ -44,27 +43,36 @@
     @media (max-width: 768px) {
       /* إخفاء عمود Total بالكامل */
       #dataTable .col-total,
-      #dataTable thead th:nth-child(4) {
+      #dataTable thead th:nth-child(4),
+      #dataTable tfoot td:nth-child(4) {
         display: none !important;
       }
 
       /* ضبط عرض Qty لـ 4 أرقام */
       #dataTable .col-qty {
-        width: 12%;
-        min-width: 60px;
-        max-width: 80px;
+        width: 15%;
+        min-width: 50px;
+        max-width: 70px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       /* ضبط عرض Cost ليظهر 0000.00 فقط */
       #dataTable .col-cost {
-        width: 18%;
-        min-width: 80px;
-        max-width: 100px;
+        width: 20%;
+        min-width: 70px;
+        max-width: 90px;
+        overflow: hidden;
       }
 
-      /* حقل السعر بدون أسهم */
+      /* حقل السعر بدون أسهم وصغير بعرض العمود */
       #dataTable .col-cost input[type="number"] {
         width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        padding: 4px 2px;
+        font-size: 14px;
         -moz-appearance: textfield; /* Firefox */
       }
       #dataTable .col-cost input[type="number"]::-webkit-outer-spin-button,
