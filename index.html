@@ -33,6 +33,69 @@
       text-align: right;
       direction: rtl;
     }
+
+    /* تنسيق الأعمدة على الديسكتوب */
+    .col-item { width: 50%; }
+    .col-qty { width: 15%; }
+    .col-cost { width: 20%; }
+    .col-total { width: 15%; }
+
+    /* تنسيق خاص للموبايل: إلغاء عمود Total وضبط العرض */
+    @media (max-width: 768px) {
+      /* إخفاء عمود Total بالكامل */
+      #dataTable .col-total,
+      #dataTable thead th:nth-child(4) {
+        display: none !important;
+      }
+
+      /* ضبط عرض Qty لـ 4 أرقام */
+      #dataTable .col-qty {
+        width: 12%;
+        min-width: 60px;
+        max-width: 80px;
+      }
+
+      /* ضبط عرض Cost ليظهر 0000.00 فقط */
+      #dataTable .col-cost {
+        width: 18%;
+        min-width: 80px;
+        max-width: 100px;
+      }
+
+      /* حقل السعر بدون أسهم */
+      #dataTable .col-cost input[type="number"] {
+        width: 100%;
+        -moz-appearance: textfield; /* Firefox */
+      }
+      #dataTable .col-cost input[type="number"]::-webkit-outer-spin-button,
+      #dataTable .col-cost input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+
+      /* باقي العرض لعمود Item */
+      #dataTable .col-item {
+        width: auto;
+      }
+
+      /* خلية الـ total في الـ tfoot */
+      #dataTable #totalAmount {
+        display: none !important;
+      }
+
+      /* تسميات الـ tfoot */
+      #dataTable tfoot td:nth-child(1),
+      #dataTable tfoot td:nth-child(2),
+      #dataTable tfoot td:nth-child(3) {
+        text-align: center;
+        font-size: 12px;
+      }
+
+      /* دمج الـ total في خانة Cost على الموبايل */
+      #dataTable tfoot td:nth-child(3) {
+        text-align: left !important;
+      }
+    }
   </style>
 </head>
 <body>
